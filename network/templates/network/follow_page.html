@@ -1,0 +1,106 @@
+{% extends "network/layout.html" %}
+
+{% block body %}
+<br>
+<h1>Following</h1>
+<br>
+
+<div class="posts"></div>
+
+<script>
+    let posts = document.querySelector('.posts');
+    let url = '{% url 'following' user.username %}';
+    let url2 = '{% url 'get_users' %}';
+
+    var users = {};
+    
+    function getPosts() {
+            fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                let sth = false;
+                data.forEach(post => {
+                    let post_div = document.createElement('div');
+                    let edit_div = document.createElement('div');
+                    
+                    post_div.classList.add('post');
+                    post_div.setAttribute('id', `post-${post.id}`);
+
+                    // date and time
+                    let dateObj = new Date(post.created_at);
+                    let month = dateObj.getUTCMonth() + 1; 
+                    let day = dateObj.getUTCDate();
+                    let year = dateObj.getUTCFullYear();
+                    let monthNames = ["January", "February", "March", "April", "May", "June",
+                                "July", "August", "September", "October", "November", "December"
+                                ];
+
+                    let hours = dateObj.getHours();
+                    let minutes = dateObj.getMinutes();
+
+                    var username = users[post.author_id];
+                    post_div.innerHTML = `
+                        <h3 class='mb-2'>${post.content}</h3>
+                        <p class='mb-2'>${year + " " + monthNames[month] + " " + day + ' ' + hours + ':' + minutes}</p>
+                        <a class='last mb-2' href='/users/${username}'><b>${username}</b></a>
+                        <p class='last'>${post.likes} likes</p>
+                    `;
+
+                    let request_user = '{{user.username}}';
+
+                    if (username == request_user) {
+                        edit_div.innerHTML = `
+                            <br>
+                            <button id='btn_${post.id}' class='btn btn-info'>Edit</button>
+                            <br>
+                        `;
+                    
+                        post_div.appendChild(edit_div);
+                        sth = true;
+
+                        
+                        posts.appendChild(post_div);
+                        
+                        document.querySelector(`#btn_${post.id}`).onclick = function(e) {
+
+                            document.querySelector(`#post-${post.id}`).innerHTML = `
+                            <textarea name='content' class='form-control'>${post.content}</textarea>
+                            <br>
+                            <button class='btn btn-success border' id='edit'>Edit</button>
+                            `;                          
+
+                            document.querySelector('#edit').onclick = function(e) {
+                                fetch(`/edit/${post.id}`, {
+                                    method: 'PUT',
+                                    body: JSON.stringify({
+                                        content: document.querySelector(`#post-${post.id}`).querySelector('textarea').value,
+                                    })
+                                }) 
+                                .then(response => {
+                                    posts.innerHTML = '';
+                                    getPosts();
+                                })
+                            }
+                        }
+                    }
+
+                    if (sth != true) {
+                        posts.appendChild(post_div);
+                        sth = true;
+                    }
+
+                    sth = false; 
+                });
+            });
+        }
+        
+        fetch(url2)
+        .then(response => response.json())
+        .then(data => {
+            data.forEach(user => {
+                users[user.id] = user.username;
+            });
+            getPosts();
+        });
+</script>
+{% endblock %}
